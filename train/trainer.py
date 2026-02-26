@@ -17,7 +17,7 @@ class MambaWrapperTrainer(Trainer):
     Only LoRA weights + cls_embed row are updated.
     """
 
-    def compute_loss(self, model, inputs, return_outputs=False):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         # model.forward(x, c=None) → uses cls_idx internally
         logits, target = model(inputs["inputs"])  # c=None → cls_idx
         loss = torch.nn.CrossEntropyLoss()(

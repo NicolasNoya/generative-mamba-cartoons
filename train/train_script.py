@@ -1,14 +1,18 @@
 from transformers import TrainingArguments
-from trainers.wrapper_trainer import MambaWrapperTrainer, simpsons_collate_fn
+from trainer import MambaWrapperTrainer, simpsons_collate_fn
+from token_dataset import TokenDataset
+import sys, os
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "AiM"))
 from models.mambawrapper import MambaWrapper
-from simpsonsdataset import SimpsonsDataset
 
 model = MambaWrapper(
     target_modules=["in_proj", "out_proj", "x_proj", "dt_proj"]
 )
 
-train_ds = SimpsonsDataset("data/train")
-eval_ds = SimpsonsDataset("data/test")
+train_ds = TokenDataset("data_tokens/train.pt")
+eval_ds = TokenDataset("data_tokens/test.pt")
 
 args = TrainingArguments(
     output_dir="./checkpoints/simpsons-lora",
@@ -19,7 +23,8 @@ args = TrainingArguments(
     weight_decay=0.05,
     adam_beta1=0.9,
     adam_beta2=0.95,
-    bf16=True,
+    bf16=False,
+    fp16=True,
     lr_scheduler_type="cosine_with_min_lr",
     lr_scheduler_kwargs={"min_lr": 1e-5},
     warmup_ratio=0.05,
