@@ -4,6 +4,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "AiM"))
 
 from typing import List
 from AiM.models.aim import AiM
+from AiM.models.stage2.mixer_seq_simple import LabelEmbedder
 
 import torch
 from peft import LoraConfig, get_peft_model
@@ -22,13 +23,29 @@ class MambaWrapper(torch.nn.Module):
         super(MambaWrapper, self).__init__()
         self.mamba_model = mamba_model
         old_embed = self.mamba_model.mamba.backbone.cls_embed
-        old_num, dim = old_embed.num_embeddings, old_embed.embedding_dim
-        new_embed = torch.nn.Embedding(old_num + 1, dim)
-        new_embed.weight.data[:old_num] = old_embed.weight.data.clone()
+        old_num_classes = old_embed.num_classes  # e.g. 1000 for ImageNet
+        dim = old_embed.embedding_table.embedding_dim
+        dropout_prob = old_embed.dropout_prob
 
-        # new class row is randomly initialized
+        # Build a new LabelEmbedder with one extra class (Simpsons)
+        # embedding_table size = (old_num_classes + 1) + 1  (extra 1 is the CFG null token)
+        new_embed = LabelEmbedder(
+            num_classes=old_num_classes + 1,
+            hidden_size=dim,
+            dropout_prob=dropout_prob,
+        )
+        # Copy pretrained class embeddings (indices 0 .. old_num_classes-1)
+        new_embed.embedding_table.weight.data[:old_num_classes] = (
+            old_embed.embedding_table.weight.data[:old_num_classes].clone()
+        )
+        # Copy the old null/CFG token to its new position (old_num_classes+1)
+        new_embed.embedding_table.weight.data[old_num_classes + 1] = (
+            old_embed.embedding_table.weight.data[old_num_classes].clone()
+        )
+        # Index old_num_classes is the new Simpsons class — left randomly initialized
+
         self.mamba_model.mamba.backbone.cls_embed = new_embed
-        self.cls_idx = old_num  # index for the Simpsons class
+        self.cls_idx = old_num_classes  # index for the Simpsons class
         self.lora_conf = LoraConfig(
             r=r,
             lora_alpha=lora_alpha,
@@ -49,10 +66,7 @@ class MambaWrapper(torch.nn.Module):
             c = torch.full(
                 (x.shape[0],), self.cls_idx, dtype=torch.long, device=x.device
             )
-        if self.training:
-            null = torch.full_like(c, self.num_classes)
-            mask = torch.rand(c.shape[0], device=c.device) < 0.1
-            c = torch.where(mask, null, c)
+        # CFG dropout is handled internally by LabelEmbedder — no manual dropout needed
         return self.model(x, c)
 
     def generate(
