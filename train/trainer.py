@@ -4,8 +4,9 @@ import torchvision
 from torch.utils.tensorboard import SummaryWriter
 from transformers import Trainer
 
-LOG_EVERY = 50  # steps between every TensorBoard log
-GEN_BATCH = 4  # number of images to generate for the image grid
+LOG_EVERY = 50  # steps between loss + gradient logs
+GEN_EVERY = 500  # steps between image generation (expensive — autoregressive)
+GEN_BATCH = 2  # number of images to generate for the image grid
 
 
 def simpsons_collate_fn(examples):
@@ -50,6 +51,7 @@ class MambaWrapperTrainer(Trainer):
         if step % LOG_EVERY == 0:
             self._log_loss(loss, step)
             self._log_gradients(model, step)
+        if step % GEN_EVERY == 0:
             self._log_generated_images(model, step)
 
         return loss
