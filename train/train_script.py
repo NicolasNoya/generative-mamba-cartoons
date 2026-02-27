@@ -35,6 +35,7 @@ args = TrainingArguments(
     save_total_limit=2,
     ddp_find_unused_parameters=False,
     save_safetensors=False,
+    report_to="none",  # we handle TensorBoard manually in the trainer
 )
 
 trainer = MambaWrapperTrainer(
@@ -43,5 +44,6 @@ trainer = MambaWrapperTrainer(
     train_dataset=train_ds,
     eval_dataset=eval_ds,
     data_collator=simpsons_collate_fn,
+    tb_log_dir="./runs/simpsons",
 )
 trainer.train()
