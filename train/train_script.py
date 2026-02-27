@@ -37,6 +37,7 @@ args = TrainingArguments(
     ddp_find_unused_parameters=False,
     save_safetensors=False,
     report_to="none",  # we handle TensorBoard manually in the trainer
+    max_grad_norm=1.0,  # clip gradients — guards against genuine explosions
 )
 
 trainer = MambaWrapperTrainer(

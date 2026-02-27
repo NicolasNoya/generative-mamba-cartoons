@@ -46,6 +46,8 @@ class MambaWrapper(torch.nn.Module):
 
         self.mamba_model.mamba.backbone.cls_embed = new_embed
         self.cls_idx = old_num_classes  # index for the Simpsons class
+        # Update AiM's num_classes so sample_cfg uses the correct null token index (old_num_classes+1)
+        self.mamba_model.num_classes = old_num_classes + 1
         self.lora_conf = LoraConfig(
             r=r,
             lora_alpha=lora_alpha,
@@ -54,10 +56,18 @@ class MambaWrapper(torch.nn.Module):
             bias=bias,
         )
         self.model = get_peft_model(self.mamba_model, self.lora_conf)
-        # get_peft_model freezes everything — explicitly unfreeze the new cls_embed row
-        for name, param in self.model.named_parameters():
-            if "cls_embed" in name:
-                param.requires_grad = True
+        # Unfreeze only the single new Simpsons row in the embedding table.
+        # We enable requires_grad on the full weight (PyTorch requires it for hooks)
+        # then zero out gradients for every other row via a backward hook.
+        cls_embed_weight = self.model.base_model.model.mamba.backbone.cls_embed.embedding_table.weight
+        cls_embed_weight.requires_grad = True
+
+        def _mask_grad(grad, idx=old_num_classes):
+            mask = torch.zeros_like(grad)
+            mask[idx] = 1.0
+            return grad * mask
+
+        cls_embed_weight.register_hook(_mask_grad)
         self.num_classes = self.mamba_model.num_classes
 
     def forward(self, x, c=None):
