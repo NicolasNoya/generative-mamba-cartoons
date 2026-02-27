@@ -27,6 +27,24 @@ def find_latest_checkpoint(checkpoints_dir: str) -> str:
     return max(dirs, key=lambda d: int(d.split("-")[-1]))
 
 
+def detect_target_modules(state_dict: dict) -> list:
+    """
+    Infer which modules were LoRA-wrapped from the checkpoint keys.
+    A LoRA-wrapped module has keys ending in '.lora_A.default.weight'.
+    e.g. 'model.base_model.model.mamba.lm_head.lora_A.default.weight'
+         → module leaf name is 'lm_head'
+    """
+    target_modules = set()
+    for key in state_dict:
+        if "lora_A.default.weight" in key:
+            # key looks like: ....<module_name>.lora_A.default.weight
+            module_name = key.split(".lora_A.default.weight")[0].split(".")[-1]
+            target_modules.add(module_name)
+    modules = sorted(target_modules)
+    print(f"  detected LoRA target_modules from checkpoint: {modules}")
+    return modules
+
+
 def load_model(ckpt_path: str, device: str) -> MambaWrapper:
     weights_path = os.path.join(ckpt_path, "pytorch_model.bin")
     if not os.path.exists(weights_path):
@@ -36,10 +54,11 @@ def load_model(ckpt_path: str, device: str) -> MambaWrapper:
         )
 
     print(f"Loading checkpoint: {ckpt_path}")
-    model = MambaWrapper(
-        target_modules=["in_proj", "out_proj", "x_proj", "dt_proj"]
-    )
     state_dict = torch.load(weights_path, map_location="cpu")
+
+    # Reconstruct with the exact same LoRA target_modules used during training
+    target_modules = detect_target_modules(state_dict)
+    model = MambaWrapper(target_modules=target_modules)
     model.load_state_dict(state_dict)
     model = model.to(device).eval()
     print(
