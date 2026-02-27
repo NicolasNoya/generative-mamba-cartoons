@@ -1,11 +1,16 @@
+import sys
 from transformers import TrainingArguments
-from trainers.wrapper_trainer import MambaWrapperTrainer, simpsons_collate_fn
+from trainer import MambaWrapperTrainer, simpsons_collate_fn
+sys.path.append(".")
+
 from models.mambawrapper import MambaWrapper
 from simpsonsdataset import SimpsonsDataset
 
 model = MambaWrapper(
-    target_modules=["in_proj", "out_proj", "x_proj", "dt_proj"]
+    target_modules=["mixer.out_proj", "mixer.in_proj", "lm_head"]
 )
+
+model.print_trainable_parameters()
 
 train_ds = SimpsonsDataset("data/train")
 eval_ds = SimpsonsDataset("data/test")
@@ -25,7 +30,7 @@ args = TrainingArguments(
     warmup_ratio=0.05,
     save_strategy="steps",
     save_steps=500,
-    evaluation_strategy="steps",
+    # evaluation_strategy="steps",
     eval_steps=500,
     save_total_limit=2,
     ddp_find_unused_parameters=False,

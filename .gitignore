@@ -4,3 +4,7 @@ data/
 */cache/*
 AiM
 __pycache__
+*.pt
+*.pth
+*.bin
+*.json

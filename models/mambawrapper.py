@@ -90,3 +90,8 @@ class MambaWrapper(torch.nn.Module):
             top_p=top_p,
             cfg_scale=cfg_scale,
         )
+
+    def print_trainable_parameters(self):
+        for name, p in self.model.named_parameters():
+            if p.requires_grad:
+                print(name)
