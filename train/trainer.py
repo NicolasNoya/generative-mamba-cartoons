@@ -61,9 +61,16 @@ class MambaWrapperTrainer(Trainer):
         self.tb_writer.add_scalar("train/loss", loss.item(), step)
 
     def _log_gradients(self, model, step: int):
+        # With fp16, gradients are still loss-scaled at this point in training_step.
+        # Divide by the scaler's current scale to get true gradient norms.
+        scale = (
+            self.accelerator.scaler.get_scale()
+            if self.accelerator.scaler is not None
+            else 1.0
+        )
         for name, param in model.named_parameters():
             if param.requires_grad and param.grad is not None:
-                grad_norm = param.grad.detach().float().norm().item()
+                grad_norm = param.grad.detach().float().norm().item() / scale
                 self.tb_writer.add_scalar(
                     f"gradients/{name.replace('.', '/')}_norm", grad_norm, step
                 )
