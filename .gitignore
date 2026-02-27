@@ -3,3 +3,4 @@ data/
 *.pyc
 */cache/*
 AiM
+__pycache__
