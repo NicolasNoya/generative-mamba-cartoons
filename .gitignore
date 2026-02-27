@@ -8,5 +8,6 @@ __pycache__
 *.pth
 *.bin
 *.json
+*.png
 runs/
 output.txt
