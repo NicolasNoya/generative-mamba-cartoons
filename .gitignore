@@ -1,0 +1,5 @@
+data/
+*.csv
+*.pyc
+*/cache/*
+AiM
