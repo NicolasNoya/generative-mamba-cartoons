@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "AiM"))
+
 from typing import List
 from AiM.models.aim import AiM
 from AiM.models.stage2.mixer_seq_simple import LabelEmbedder
@@ -96,3 +100,8 @@ class MambaWrapper(torch.nn.Module):
             top_p=top_p,
             cfg_scale=cfg_scale,
         )
+
+    def print_trainable_parameters(self):
+        for name, p in self.model.named_parameters():
+            if p.requires_grad:
+                print(name)

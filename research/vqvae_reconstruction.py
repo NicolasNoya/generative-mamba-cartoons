@@ -1,3 +1,4 @@
+#%%
 """
 VQ-VAE reconstruction check.
 Encodes a few Simpsons images and decodes them back to pixels.
@@ -123,5 +124,5 @@ if __name__ == "__main__":
     print(f"\nSaved to {args.out}")
     print(f"MSE  : {mse:.4f}  (lower = better reconstruction)")
     print(
-        f"Tokens: {indices.shape[-1]} per image  (codebook vocab = {vqvae.config.codebook_size})"
+        # f"Tokens: {indices.shape[-1]} per image  (codebook vocab = {vqvae.config.codebook_size})"
     )

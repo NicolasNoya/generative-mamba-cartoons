@@ -3,3 +3,14 @@ data/
 *.pyc
 */cache/*
 AiM
+__pycache__
+*.pt
+*.pth
+*.bin
+*.json
+*.png
+runs/
+output.txt
+*.log
+*.gz
+*.txt
