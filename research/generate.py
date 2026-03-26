@@ -1,3 +1,4 @@
+#%%
 """
 Generate images from a trained MambaWrapper checkpoint.
 
@@ -9,6 +10,7 @@ Run from repo root:
 import sys, os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "AiM"))
 
 import argparse
@@ -22,6 +24,8 @@ from models.mambawrapper import MambaWrapper
 def find_latest_checkpoint(checkpoints_dir: str) -> str:
     """Return the checkpoint folder with the highest step number."""
     dirs = glob.glob(os.path.join(checkpoints_dir, "checkpoint-*"))
+    print(checkpoints_dir)
+    print(dirs)
     if not dirs:
         raise FileNotFoundError(f"No checkpoints found in {checkpoints_dir}")
     return max(dirs, key=lambda d: int(d.split("-")[-1]))
@@ -88,15 +92,15 @@ if __name__ == "__main__":
         help="root checkpoint dir used to find the latest checkpoint automatically",
     )
     parser.add_argument(
-        "--n", type=int, default=8, help="number of images to generate"
+        "--n", type=int, default=32, help="number of images to generate"
     )
     parser.add_argument("--temperature", type=float, default=1.0)
-    parser.add_argument("--top-k", type=int, default=600)
-    parser.add_argument("--top-p", type=float, default=0.98)
+    parser.add_argument("--top-k", type=int, default=30)
+    parser.add_argument("--top-p", type=float, default=0.9999)
     parser.add_argument(
         "--cfg-scale",
         type=float,
-        default=1.0,
+        default=0,
         help="classifier-free guidance scale (1.0 = disabled)",
     )
     parser.add_argument("--device", type=str, default="cuda")
@@ -114,39 +118,49 @@ if __name__ == "__main__":
         f"(temp={args.temperature}, top_k={args.top_k}, "
         f"top_p={args.top_p}, cfg={args.cfg_scale})..."
     )
+    # topk_list = [10,20,30,40,50,60,70,80,90,100,200,300,400,500,600]
+    # temp_list = [0.0,0.2,0.4,0.6,0.8,1.0,1.4,1.8,2.0, 2.5]
 
-    with torch.no_grad():
-        imgs = model.generate(
-            batch=args.n,
-            temperature=args.temperature,
-            top_k=args.top_k,
-            top_p=args.top_p,
-            cfg_scale=args.cfg_scale,
-        )  # (N, 3, H, W)  [-1, 1]
+    topk_list = [10]
+    temp_list = [20]
 
-    imgs = denorm(imgs).float().cpu()  # → [0, 1]
+    from itertools import product
+    for val in product(topk_list, temp_list):
 
-    # ── plot grid ──────────────────────────────────────────────────────
-    cols = min(args.n, 4)
-    rows = (args.n + cols - 1) // cols
-    fig, axes = plt.subplots(rows, cols, figsize=(cols * 3, rows * 3))
-    axes = (
-        [axes]
-        if rows * cols == 1
-        else list(axes.flat if hasattr(axes, "flat") else axes)
-    )
+        with torch.no_grad():
+            imgs = model.generate(
+                batch=args.n,
+                temperature=val[1],
+                top_k=val[0],
+                top_p=args.top_p,
+                cfg_scale=args.cfg_scale,
+            )  # (N, 3, H, W)  [-1, 1]
 
-    for i, ax in enumerate(axes):
-        if i < len(imgs):
-            ax.imshow(imgs[i].permute(1, 2, 0).numpy())
-        ax.axis("off")
+        imgs = denorm(imgs).float().cpu()  # → [0, 1]
 
-    fig.suptitle(
-        f"Generated Simpsons  |  checkpoint step {step}  |  "
-        f"temp={args.temperature}  top_k={args.top_k}  cfg={args.cfg_scale}",
-        fontsize=10,
-    )
-    plt.tight_layout()
-    os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
-    plt.savefig(args.out, bbox_inches="tight", dpi=150)
-    print(f"Saved to {args.out}")
+        # ── plot grid ──────────────────────────────────────────────────────
+        cols = min(args.n, 4)
+        rows = (args.n + cols - 1) // cols
+        fig, axes = plt.subplots(rows, cols, figsize=(cols * 3, rows * 3))
+        axes = (
+            [axes]
+            if rows * cols == 1
+            else list(axes.flat if hasattr(axes, "flat") else axes)
+        )
+
+        for i, ax in enumerate(axes):
+            if i < len(imgs):
+                ax.imshow(imgs[i].permute(1, 2, 0).numpy())
+            ax.axis("off")
+
+        fig.suptitle(
+            f"Generated Simpsons  |  checkpoint step {step}  |  "
+            f"temp={args.temperature}  top_k={args.top_k}  cfg={args.cfg_scale}",
+            fontsize=10,
+        )
+        plt.tight_layout()
+        os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
+        plt.savefig(f"research/generated{val}.png", bbox_inches="tight", dpi=150)
+        print(f"Saved to research/generated{val}.png")
+
+# %%
