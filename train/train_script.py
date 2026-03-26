@@ -1,4 +1,3 @@
-import sys
 from transformers import TrainingArguments
 from trainer import MambaWrapperTrainer, simpsons_collate_fn
 from token_dataset import TokenDataset
@@ -34,6 +33,7 @@ args = TrainingArguments(
     warmup_ratio=0.02,  # shorter warmup — more time at peak LR
     save_strategy="steps",
     save_steps=500,
+    evaluation_strategy="steps",
     eval_steps=500,
     save_total_limit=3,
     ddp_find_unused_parameters=False,
