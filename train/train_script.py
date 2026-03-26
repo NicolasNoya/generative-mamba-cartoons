@@ -48,4 +48,4 @@ trainer = MambaWrapperTrainer(
     data_collator=simpsons_collate_fn,
     tb_log_dir="./runs/simpsons",
 )
-trainer.train()
+trainer.train(resume_from_checkpoint=True)
